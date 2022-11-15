@@ -132,6 +132,8 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
     List<List<SimpleRecord>> expected = TEST_DATA_MULTIPLE_SNAPSHOTS;
     appendDataAsMultipleSnapshots(expected);
 
+//    System.out.println("=========== table.currentSnapshot(): " + table.currentSnapshot());
+
     StreamingQuery query = startStream();
 
     List<SimpleRecord> actual = rowsAvailable(query);
@@ -162,6 +164,7 @@ public final class TestStructuredStreamingRead3 extends SparkCatalogTestBase {
 
     table.refresh();
     long streamStartTimestamp = table.currentSnapshot().timestampMillis() + 1;
+    System.out.println("============= streamStartTimestamp: " + streamStartTimestamp);
 
     StreamingQuery query =
         startStream(SparkReadOptions.STREAM_FROM_TIMESTAMP, Long.toString(streamStartTimestamp));

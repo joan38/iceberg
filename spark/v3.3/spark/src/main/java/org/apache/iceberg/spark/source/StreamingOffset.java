@@ -30,17 +30,13 @@ import org.apache.iceberg.util.JsonUtil;
 import org.apache.spark.sql.connector.read.streaming.Offset;
 
 class StreamingOffset extends Offset {
-  static final StreamingOffset START_OFFSET = new StreamingOffset(-1L, -1, false);
-
   private static final int CURR_VERSION = 1;
   private static final String VERSION = "version";
   private static final String SNAPSHOT_ID = "snapshot_id";
   private static final String POSITION = "position";
-  private static final String SCAN_ALL_FILES = "scan_all_files";
 
   private final long snapshotId;
   private final long position;
-  private final boolean scanAllFiles;
 
   /**
    * An implementation of Spark Structured Streaming Offset, to track the current processed files of
@@ -51,10 +47,9 @@ class StreamingOffset extends Offset {
    * @param scanAllFiles whether to scan all files in a snapshot; for example, to read all data when
    *     starting a stream.
    */
-  StreamingOffset(long snapshotId, long position, boolean scanAllFiles) {
+  StreamingOffset(long snapshotId, long position) {
     this.snapshotId = snapshotId;
     this.position = position;
-    this.scanAllFiles = scanAllFiles;
   }
 
   static StreamingOffset fromJson(String json) {
@@ -91,7 +86,6 @@ class StreamingOffset extends Offset {
       generator.writeNumberField(VERSION, CURR_VERSION);
       generator.writeNumberField(SNAPSHOT_ID, snapshotId);
       generator.writeNumberField(POSITION, position);
-      generator.writeBooleanField(SCAN_ALL_FILES, scanAllFiles);
       generator.writeEndObject();
       generator.flush();
 
@@ -110,17 +104,12 @@ class StreamingOffset extends Offset {
     return position;
   }
 
-  boolean shouldScanAllFiles() {
-    return scanAllFiles;
-  }
-
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof StreamingOffset) {
       StreamingOffset offset = (StreamingOffset) obj;
       return offset.snapshotId == snapshotId
-          && offset.position == position
-          && offset.scanAllFiles == scanAllFiles;
+          && offset.position == position;
     } else {
       return false;
     }
@@ -128,14 +117,14 @@ class StreamingOffset extends Offset {
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(snapshotId, position, scanAllFiles);
+    return Objects.hashCode(snapshotId, position);
   }
 
   @Override
   public String toString() {
     return String.format(
-        "Streaming Offset[%d: position (%d) scan_all_files (%b)]",
-        snapshotId, position, scanAllFiles);
+        "Streaming Offset[%d: position (%d)]",
+        snapshotId, position);
   }
 
   private static StreamingOffset fromJsonNode(JsonNode node) {
@@ -150,8 +139,7 @@ class StreamingOffset extends Offset {
 
     long snapshotId = JsonUtil.getLong(SNAPSHOT_ID, node);
     int position = JsonUtil.getInt(POSITION, node);
-    boolean shouldScanAllFiles = JsonUtil.getBool(SCAN_ALL_FILES, node);
 
-    return new StreamingOffset(snapshotId, position, shouldScanAllFiles);
+    return new StreamingOffset(snapshotId, position);
   }
 }

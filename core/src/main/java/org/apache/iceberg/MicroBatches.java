@@ -112,16 +112,13 @@ public class MicroBatches {
       return this;
     }
 
-    public MicroBatch generate(long startFileIndex, long targetSizeInBytes, boolean scanAllFiles) {
+    public MicroBatch generate(long startFileIndex, long targetSizeInBytes) {
       Preconditions.checkArgument(
           startFileIndex >= 0, "startFileIndex is unexpectedly smaller than 0");
       Preconditions.checkArgument(
           targetSizeInBytes > 0, "targetSizeInBytes should be larger than 0");
 
-      List<ManifestFile> manifests =
-          scanAllFiles
-              ? snapshot.dataManifests(io)
-              : snapshot.dataManifests(io).stream()
+      List<ManifestFile> manifests = snapshot.dataManifests(io).stream()
                   .filter(m -> m.snapshotId().equals(snapshot.snapshotId()))
                   .collect(Collectors.toList());
 
@@ -130,7 +127,7 @@ public class MicroBatches {
           skipManifests(manifestIndexes, startFileIndex);
 
       return generateMicroBatch(
-          skippedManifestIndexes, startFileIndex, targetSizeInBytes, scanAllFiles);
+          skippedManifestIndexes, startFileIndex, targetSizeInBytes);
     }
 
     /**
@@ -197,8 +194,7 @@ public class MicroBatches {
     private MicroBatch generateMicroBatch(
         List<Pair<ManifestFile, Integer>> indexedManifests,
         long startFileIndex,
-        long targetSizeInBytes,
-        boolean scanAllFiles) {
+        long targetSizeInBytes) {
       if (indexedManifests.isEmpty()) {
         return new MicroBatch(
             snapshot.snapshotId(),
@@ -218,7 +214,7 @@ public class MicroBatches {
         currentFileIndex = indexedManifests.get(idx).second();
 
         try (CloseableIterable<FileScanTask> taskIterable =
-                open(indexedManifests.get(idx).first(), scanAllFiles);
+                open(indexedManifests.get(idx).first());
             CloseableIterator<FileScanTask> taskIter = taskIterable.iterator()) {
           while (taskIter.hasNext()) {
             FileScanTask task = taskIter.next();
@@ -268,12 +264,11 @@ public class MicroBatches {
           isLastIndex);
     }
 
-    private CloseableIterable<FileScanTask> open(ManifestFile manifestFile, boolean scanAllFiles) {
+    private CloseableIterable<FileScanTask> open(ManifestFile manifestFile) {
       ManifestGroup manifestGroup =
           new ManifestGroup(io, ImmutableList.of(manifestFile))
               .specsById(specsById)
               .caseSensitive(caseSensitive);
-      if (!scanAllFiles) {
         manifestGroup =
             manifestGroup
                 .filterManifestEntries(
@@ -281,7 +276,6 @@ public class MicroBatches {
                         entry.snapshotId() == snapshot.snapshotId()
                             && entry.status() == ManifestEntry.Status.ADDED)
                 .ignoreDeleted();
-      }
 
       return manifestGroup.planFiles();
     }
